@@ -1,3 +1,4 @@
+//Loading the dependencies
 const { Consumer } = require('sqs-consumer');
 const AWS = require('aws-sdk');
 const https = require('https');
@@ -6,25 +7,36 @@ const bigquery = new BigQuery();
 // Load the credential
 AWS.config.loadFromPath('./config.json');
 
+//Declare App Constants
+const awsSQSQueue = 'https://sqs.us-east-1.amazonaws.com/258563249917/firstcry';
+const bigQueryDataSet = 'irisdataset';
+const bigQueryTableName = 'sqs_demo_json_parse_final';
+
 const app = Consumer.create({
-  queueUrl: 'https://sqs.us-east-1.amazonaws.com/258563249917/firstcry',
+  queueUrl: awsSQSQueue,
   batchSize : 10,
   handleMessageBatch: async (rows) => {
-     //console.log(rows); 
+    //Declare local array to store the rows.
     let bq_ds = [];
+
+    //Loop through the incoming batch to prepare the
+    //bigquery data array to be inserted
     for(let i=0;i<rows.length;i++){
         let json_parsed_row = JSON.parse(rows[i].Body);
         bq_ds.push(json_parsed_row);
     }
-    console.log(bq_ds);
-    // Insert data into a table
+
+    // Stream the data prepared into BigQuery
     try{
-    await bigquery
-    .dataset('irisdataset')
-    .table('sqs_demo_json_parse_final')
-    .insert(bq_ds);
+
+      await bigquery
+      .dataset(bigQueryDataSet)
+      .table(bigQueryTableName)
+      .insert(bq_ds);
+
     }catch(error){
-        console.log(error);
+        //Push Data into file if BQ Insert Fails.
+        //TBD : The Code needs to be written here.
     }
   },
   sqs: new AWS.SQS({
